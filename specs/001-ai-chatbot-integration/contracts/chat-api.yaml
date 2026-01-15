@@ -1,0 +1,329 @@
+openapi: 3.1.0
+info:
+  title: AI Todo Chatbot API
+  description: RESTful API for natural language task management via AI chatbot
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@todoapp.example.com
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: https://api.todoapp.example.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/{user_id}/chat:
+    post:
+      summary: Send message to AI chatbot
+      description: |
+        Process a natural language message from the user and execute appropriate task operations.
+        The chatbot understands commands to add, list, update, complete, and delete tasks.
+        Requires JWT authentication. User ID in path must match authenticated user.
+      operationId: sendChatMessage
+      tags:
+        - Chat
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: Authenticated user ID (must match JWT)
+          schema:
+            type: string
+            example: "user_abc123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            examples:
+              firstMessage:
+                summary: First message in conversation
+                value:
+                  message: "Add a task to buy groceries"
+              continuationMessage:
+                summary: Continue existing conversation
+                value:
+                  conversation_id: "conv_f47ac10b"
+                  message: "Show me my tasks"
+              multiStepCommand:
+                summary: Multi-step command
+                value:
+                  conversation_id: "conv_f47ac10b"
+                  message: "Show my tasks and complete the first one"
+      responses:
+        '200':
+          description: Message processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+              examples:
+                taskAdded:
+                  summary: Task created successfully
+                  value:
+                    conversation_id: "conv_f47ac10b"
+                    message: "I've added 'buy groceries' to your task list."
+                    tool_calls:
+                      - tool: "add_task"
+                        parameters:
+                          user_id: "user_abc123"
+                          title: "buy groceries"
+                          description: null
+                          completed: false
+                        result:
+                          id: 42
+                          user_id: "user_abc123"
+                          title: "buy groceries"
+                          description: null
+                          completed: false
+                          created_at: "2026-01-14T20:00:00Z"
+                          updated_at: "2026-01-14T20:00:00Z"
+                    timestamp: "2026-01-14T20:00:01Z"
+                tasksList:
+                  summary: Tasks retrieved successfully
+                  value:
+                    conversation_id: "conv_f47ac10b"
+                    message: |
+                      Here are your tasks:
+
+                      **Pending:**
+                      1. Task #42: buy groceries
+                      2. Task #43: call dentist
+
+                      **Completed:**
+                      3. Task #40: review code
+                    tool_calls:
+                      - tool: "list_tasks"
+                        parameters:
+                          user_id: "user_abc123"
+                          completed: null
+                        result:
+                          - id: 42
+                            user_id: "user_abc123"
+                            title: "buy groceries"
+                            description: null
+                            completed: false
+                            created_at: "2026-01-14T19:00:00Z"
+                            updated_at: "2026-01-14T19:00:00Z"
+                          - id: 43
+                            user_id: "user_abc123"
+                            title: "call dentist"
+                            description: null
+                            completed: false
+                            created_at: "2026-01-14T19:30:00Z"
+                            updated_at: "2026-01-14T19:30:00Z"
+                          - id: 40
+                            user_id: "user_abc123"
+                            title: "review code"
+                            description: null
+                            completed: true
+                            created_at: "2026-01-13T10:00:00Z"
+                            updated_at: "2026-01-14T18:00:00Z"
+                    timestamp: "2026-01-14T20:01:00Z"
+        '400':
+          description: Invalid request format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingMessage:
+                  summary: Message field missing
+                  value:
+                    error: "Message text is required."
+                emptyMessage:
+                  summary: Empty message
+                  value:
+                    error: "Message cannot be empty."
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingToken:
+                  summary: JWT token missing
+                  value:
+                    error: "Authentication required. Please log in."
+                invalidToken:
+                  summary: JWT token invalid
+                  value:
+                    error: "Authentication required. Please log in."
+        '403':
+          description: Permission denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                userIdMismatch:
+                  summary: User ID doesn't match JWT
+                  value:
+                    error: "You don't have permission to access this conversation."
+                conversationAccessDenied:
+                  summary: Conversation belongs to another user
+                  value:
+                    error: "You don't have permission to access this conversation."
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverError:
+                  summary: Generic server error
+                  value:
+                    error: "I'm having trouble right now. Please try again in a moment."
+                cohereAPIError:
+                  summary: Cohere API unavailable
+                  value:
+                    error: "I'm having trouble understanding right now. Please try again."
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from authentication endpoint
+
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        conversation_id:
+          type: string
+          format: uuid
+          description: |
+            UUID of existing conversation (optional for first message).
+            If omitted, a new conversation will be created.
+          example: "conv_f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        message:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: User's natural language message
+          example: "Add a task to buy groceries"
+
+    ChatResponse:
+      type: object
+      required:
+        - conversation_id
+        - message
+        - timestamp
+      properties:
+        conversation_id:
+          type: string
+          format: uuid
+          description: UUID of the conversation (generated for first message)
+          example: "conv_f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        message:
+          type: string
+          description: AI assistant's response message (may include markdown)
+          example: "I've added 'buy groceries' to your task list."
+        tool_calls:
+          type: array
+          description: List of MCP tool calls executed (empty if no tools called)
+          items:
+            $ref: '#/components/schemas/ToolCall'
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when response was generated
+          example: "2026-01-14T20:00:01Z"
+
+    ToolCall:
+      type: object
+      required:
+        - tool
+        - parameters
+        - result
+      properties:
+        tool:
+          type: string
+          enum: [add_task, list_tasks, update_task, complete_task, delete_task]
+          description: Name of MCP tool executed
+          example: "add_task"
+        parameters:
+          type: object
+          description: Input parameters passed to the tool
+          example:
+            user_id: "user_abc123"
+            title: "buy groceries"
+            description: null
+            completed: false
+        result:
+          oneOf:
+            - $ref: '#/components/schemas/TaskObject'
+            - type: array
+              items:
+                $ref: '#/components/schemas/TaskObject'
+            - type: object
+              description: Tool-specific result format
+          description: Output returned by the tool
+
+    TaskObject:
+      type: object
+      required:
+        - id
+        - user_id
+        - title
+        - completed
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          description: Unique task identifier
+          example: 42
+        user_id:
+          type: string
+          description: Owner of the task
+          example: "user_abc123"
+        title:
+          type: string
+          description: Task title
+          example: "buy groceries"
+        description:
+          type: string
+          nullable: true
+          description: Task description (optional)
+          example: "Get milk, eggs, and bread"
+        completed:
+          type: boolean
+          description: Task completion status
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          description: When task was created
+          example: "2026-01-14T20:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: When task was last updated
+          example: "2026-01-14T20:00:00Z"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: "Message text is required."
+
+tags:
+  - name: Chat
+    description: AI chatbot endpoints for natural language task management

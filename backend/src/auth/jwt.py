@@ -128,3 +128,29 @@ async def get_current_user(authorization: str = Header(None)) -> str:
         raise UnauthorizedException(detail="Token payload missing user_id")
 
     return user_id
+
+
+async def get_current_user_id(authorization: str = Header(None)) -> UUID:
+    """
+    FastAPI dependency that extracts and validates JWT token, returning UUID.
+
+    Args:
+        authorization: Authorization header value (format: "Bearer <token>")
+
+    Returns:
+        user_id as UUID extracted from validated JWT token
+
+    Raises:
+        UnauthorizedException: If authorization header is missing, malformed, or token is invalid
+
+    Usage:
+        @router.post("/api/{user_id}/chat")
+        async def chat(user_id: str, current_user_id: UUID = Depends(get_current_user_id)):
+            # current_user_id is guaranteed to be a UUID from a validated JWT
+            ...
+    """
+    user_id_str = await get_current_user(authorization)
+    try:
+        return UUID(user_id_str)
+    except ValueError:
+        raise UnauthorizedException(detail="Invalid user ID format in token")

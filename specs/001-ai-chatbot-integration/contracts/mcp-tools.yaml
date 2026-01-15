@@ -1,0 +1,166 @@
+# MCP Tools Contract
+# Model Context Protocol (MCP) tool definitions for AI agents
+
+tools:
+  - name: add_task
+    description: Create a new task for the authenticated user
+    parameters:
+      type: object
+      required: [user_id, title]
+      properties:
+        user_id:
+          type: string
+          description: Authenticated user ID (from JWT)
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Task title
+        description:
+          type: string
+          maxLength: 1000
+          description: Task description (optional)
+        completed:
+          type: boolean
+          default: false
+          description: Initial completion status
+    returns:
+      type: object
+      properties:
+        id: { type: integer }
+        user_id: { type: string }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        completed: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    errors:
+      - ValidationError: "Title cannot be empty"
+      - PermissionError: "Invalid user_id"
+
+  - name: list_tasks
+    description: Retrieve tasks for the authenticated user with optional status filter
+    parameters:
+      type: object
+      required: [user_id]
+      properties:
+        user_id:
+          type: string
+          description: Authenticated user ID (from JWT)
+        completed:
+          type: boolean
+          description: Filter by completion status (optional, null = all tasks)
+    returns:
+      type: array
+      items:
+        type: object
+        properties:
+          id: { type: integer }
+          user_id: { type: string }
+          title: { type: string }
+          description: { type: string, nullable: true }
+          completed: { type: boolean }
+          created_at: { type: string, format: date-time }
+          updated_at: { type: string, format: date-time }
+    errors:
+      - PermissionError: "Invalid user_id"
+
+  - name: update_task
+    description: Update task title or description for the authenticated user
+    parameters:
+      type: object
+      required: [user_id, task_id]
+      properties:
+        user_id:
+          type: string
+          description: Authenticated user ID (from JWT)
+        task_id:
+          type: integer
+          description: ID of task to update
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: New task title (optional)
+        description:
+          type: string
+          maxLength: 1000
+          description: New task description (optional)
+    returns:
+      type: object
+      properties:
+        id: { type: integer }
+        user_id: { type: string }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        completed: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    errors:
+      - NotFoundError: "Task not found"
+      - PermissionError: "Task belongs to different user"
+      - ValidationError: "Title cannot be empty"
+
+  - name: complete_task
+    description: Mark task as complete or incomplete for the authenticated user
+    parameters:
+      type: object
+      required: [user_id, task_id, completed]
+      properties:
+        user_id:
+          type: string
+          description: Authenticated user ID (from JWT)
+        task_id:
+          type: integer
+          description: ID of task to update
+        completed:
+          type: boolean
+          description: New completion status
+    returns:
+      type: object
+      properties:
+        id: { type: integer }
+        user_id: { type: string }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        completed: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    errors:
+      - NotFoundError: "Task not found"
+      - PermissionError: "Task belongs to different user"
+
+  - name: delete_task
+    description: Permanently delete a task for the authenticated user
+    parameters:
+      type: object
+      required: [user_id, task_id]
+      properties:
+        user_id:
+          type: string
+          description: Authenticated user ID (from JWT)
+        task_id:
+          type: integer
+          description: ID of task to delete
+    returns:
+      type: object
+      properties:
+        deleted_task_id: { type: integer }
+        message: { type: string }
+    errors:
+      - NotFoundError: "Task not found"
+      - PermissionError: "Task belongs to different user"
+
+# Security Rules
+security:
+  - All tools MUST enforce user_id validation
+  - All tools MUST filter database queries by user_id
+  - Tools are the ONLY interface agents use for task data
+  - Tool calls MUST be logged for audit trail
+
+# Usage Notes
+usage:
+  - Tools are called by Todo-Orchestrator Agent based on classified intent
+  - Task-Ops-Executor Agent implements tool functions using SQLModel
+  - OpenAI Agents SDK orchestrates tool selection and execution
+  - Tool results are included in ChatResponse.tool_calls array

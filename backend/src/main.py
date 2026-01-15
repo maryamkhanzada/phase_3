@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 
 from src.config import settings
 from src.db import init_db
-from src.routes import auth, tasks
+from src.routes import auth, tasks, chat
 
 
 @asynccontextmanager
@@ -94,6 +94,7 @@ async def health_check():
 # Register routers
 app.include_router(auth.router)  # /api/auth/signup, /api/auth/login
 app.include_router(tasks.router)  # /api/tasks, /api/tasks/:id
+app.include_router(chat.router)  # /api/{user_id}/chat
 
 
 # Root endpoint

@@ -1,12 +1,13 @@
 """
-SQLModel database models for User and Task entities.
+SQLModel database models for User, Task, Conversation, and Message entities.
 Defines table structure, relationships, and validation rules.
 """
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
-from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel import Column, Field, Relationship, SQLModel
+from sqlalchemy import JSON
 
 
 class User(SQLModel, table=True):
@@ -44,3 +45,59 @@ class Task(SQLModel, table=True):
 
     # Relationship to owner
     owner: User = Relationship(back_populates="tasks")
+
+
+class Conversation(SQLModel, table=True):
+    """Conversation model for chatbot interactions."""
+
+    __tablename__ = "conversations"
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    user_id: UUID = Field(foreign_key="users.id", nullable=False, index=True)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True
+    )
+
+    # Relationships
+    messages: List["Message"] = Relationship(
+        back_populates="conversation",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+
+
+class Message(SQLModel, table=True):
+    """Message model for conversation history."""
+
+    __tablename__ = "messages"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    conversation_id: UUID = Field(
+        foreign_key="conversations.id",
+        nullable=False,
+        index=True
+    )
+    user_id: UUID = Field(
+        foreign_key="users.id",
+        nullable=False,
+        index=True
+    )
+    role: str = Field(nullable=False)  # 'user' or 'assistant'
+    content: str = Field(nullable=False)
+    tool_calls: Optional[Dict[str, Any]] = Field(
+        default=None,
+        sa_column=Column(JSON)
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True
+    )
+
+    # Relationships
+    conversation: Optional[Conversation] = Relationship(back_populates="messages")

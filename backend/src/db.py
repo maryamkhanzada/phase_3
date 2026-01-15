@@ -10,18 +10,25 @@ from src.config import settings
 
 
 # Create async engine
-# Replace postgresql:// with postgresql+asyncpg:// for async support
-database_url = settings.database_url.replace(
-    "postgresql://", "postgresql+asyncpg://"
-).replace(
-    "postgres://", "postgresql+asyncpg://"  # Handle Neon's postgres:// prefix
-)
+# Replace postgresql:// with postgresql+asyncpg:// for async support (if using PostgreSQL)
+database_url = settings.database_url
+if database_url.startswith("postgresql://") or database_url.startswith("postgres://"):
+    database_url = database_url.replace(
+        "postgresql://", "postgresql+asyncpg://"
+    ).replace(
+        "postgres://", "postgresql+asyncpg://"  # Handle Neon's postgres:// prefix
+    )
 
-engine = create_async_engine(
-    database_url,
-    echo=settings.app_env == "development",
-    future=True,
-)
+# Create engine with appropriate settings
+engine_kwargs = {
+    "echo": settings.app_env == "development",
+}
+
+# SQLite-specific connection arguments
+if database_url.startswith("sqlite"):
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+
+engine = create_async_engine(database_url, **engine_kwargs)
 
 # Create async session factory
 async_session = sessionmaker(

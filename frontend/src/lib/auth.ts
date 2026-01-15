@@ -22,3 +22,16 @@ export function removeAuthToken(): void {
 export function isAuthenticated(): boolean {
   return getAuthToken() !== null
 }
+
+export function getUserIdFromToken(): string | null {
+  const token = getAuthToken()
+  if (!token) return null
+
+  try {
+    // Decode JWT payload (second part of token)
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.user_id || null
+  } catch {
+    return null
+  }
+}

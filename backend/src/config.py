@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     app_env: str = Field(default="development", description="Application environment")
     log_level: str = Field(default="INFO", description="Logging level")
 
+    # AI/NLP Configuration
+    cohere_api_key: str = Field(..., description="Cohere API key for NLP operations")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

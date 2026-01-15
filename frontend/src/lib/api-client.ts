@@ -1,4 +1,5 @@
 import type { APIError } from '@/types/api'
+import type { ChatRequest, ChatResponse } from '@/types/chat'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -51,4 +52,21 @@ export async function apiClient<T = unknown>(
       status: undefined,
     } as APIError
   }
+}
+
+/**
+ * Send chat message to AI chatbot
+ *
+ * @param userId - User ID from authentication
+ * @param request - Chat request with message and optional conversation_id
+ * @returns ChatResponse with assistant message and tool calls
+ */
+export async function sendChatMessage(
+  userId: string,
+  request: ChatRequest
+): Promise<ChatResponse> {
+  return apiClient<ChatResponse>(`/api/${userId}/chat`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
 }

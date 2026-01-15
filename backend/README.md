@@ -97,8 +97,38 @@ backend/
 - `PUT /api/tasks/:id` - Update existing task
 - `DELETE /api/tasks/:id` - Delete task
 
+### AI Chatbot (Authenticated)
+- `POST /api/{user_id}/chat` - Send message to AI chatbot for natural language task management
+
 ### System
 - `GET /health` - Health check endpoint
+
+## AI Chatbot Features
+
+The backend includes an AI-powered chatbot that allows users to manage tasks through natural language. It uses:
+
+- **Cohere API** for intent classification and entity extraction
+- **Three-agent architecture**:
+  - **Todo-Orchestrator**: Main brain for intent classification and response generation
+  - **Task-Ops-Executor**: Executes MCP tools for task operations (CRUD)
+  - **Conversation-Memory**: Manages conversation state with database persistence
+
+### Supported Commands
+
+- **Add tasks**: "Add a task to buy groceries"
+- **List tasks**: "Show me my tasks"
+- **Update tasks**: "Update task 3 title to review code"
+- **Complete tasks**: "Mark task 5 as done"
+- **Delete tasks**: "Delete task 7"
+
+### Setup Cohere API
+
+1. Sign up at [Cohere Dashboard](https://dashboard.cohere.com/)
+2. Create an API key
+3. Add to `.env`:
+   ```
+   COHERE_API_KEY=your-cohere-api-key-here
+   ```
 
 ## Development
 
@@ -128,6 +158,7 @@ mypy src/
 | `JWT_EXPIRATION_HOURS` | No | 24 | JWT token expiration time |
 | `APP_ENV` | No | development | Application environment |
 | `LOG_LEVEL` | No | INFO | Logging level |
+| `COHERE_API_KEY` | Yes | - | Cohere API key for AI chatbot NLP |
 
 ## Security Notes
 
